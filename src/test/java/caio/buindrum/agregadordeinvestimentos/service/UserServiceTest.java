@@ -1,7 +1,7 @@
 package caio.buindrum.agregadordeinvestimentos.service;
 
-import caio.buindrum.agregadordeinvestimentos.Controller.CreateUserDto;
-import caio.buindrum.agregadordeinvestimentos.Controller.UpdateUserDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateUserDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UpdateUserDto;
 import caio.buindrum.agregadordeinvestimentos.entity.User;
 import caio.buindrum.agregadordeinvestimentos.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;

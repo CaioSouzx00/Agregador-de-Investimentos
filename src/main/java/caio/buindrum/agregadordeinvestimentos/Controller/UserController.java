@@ -1,4 +1,8 @@
 package caio.buindrum.agregadordeinvestimentos.Controller;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.AccountResponseDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateAccountDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateUserDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UpdateUserDto;
 import caio.buindrum.agregadordeinvestimentos.entity.User;
 
 import caio.buindrum.agregadordeinvestimentos.service.UserService;
@@ -7,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/users")
@@ -60,4 +63,19 @@ public class UserController {
         userService.deleteById(userId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{userId}/accounts")
+    public ResponseEntity<Void> createAccount(@PathVariable("userId") String userId, @RequestBody CreateAccountDto createAccountDto){
+        userService.createAccount(userId, createAccountDto);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{userId}/accounts")
+    public ResponseEntity<List<AccountResponseDto>> ListAccounts(@PathVariable("userId") String userId){
+
+        var accounts = userService.ListAccounts(userId);
+
+        return ResponseEntity.ok(accounts);
+    }
+
 }
