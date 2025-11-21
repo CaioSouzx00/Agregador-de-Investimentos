@@ -1,10 +1,8 @@
 services:
   mysql:
-    image: 'mysql:latest'
+    image: mysql:latest
     environment:
-      - 'MYSQL_DATABASE=agregadordeinvestimentos'
-      - 'MYSQL_PASSWORD='
-      - 'MYSQL_ROOT_PASSWORD='
-      - 'MYSQL_USER=root'
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: agregadordeinvestimentos
     ports:
-      - '3306'
+      - "3307:3306"
