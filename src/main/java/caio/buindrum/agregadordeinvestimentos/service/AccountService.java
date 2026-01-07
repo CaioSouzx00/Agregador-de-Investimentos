@@ -45,7 +45,7 @@ public class AccountService {
             id,
             account,
             stock,
-            associateAccountStock.quality()
+            associateAccountStock.quantity()
         );
 
         accountStockRepository.save(entity);

@@ -3,6 +3,7 @@ import caio.buindrum.agregadordeinvestimentos.Controller.Dto.AccountResponseDto;
 import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateAccountDto;
 import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateUserDto;
 import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UpdateUserDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UserResponseDto;
 import caio.buindrum.agregadordeinvestimentos.entity.User;
 
 import caio.buindrum.agregadordeinvestimentos.service.UserService;
@@ -30,11 +31,11 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<User> getUserById(@PathVariable("userId") String userId){
+    public ResponseEntity<UserResponseDto> getUserById(@PathVariable("userId") String userId){
         var user = userService.getUserById(userId);
 
         if(user.isPresent()){
-            return ResponseEntity.ok(user.get());
+            return ResponseEntity.ok(new UserResponseDto(user.get().getUserId().toString(), user.get().getUsername(), user.get().getEmail()));
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -42,10 +43,10 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<List<User>> ListUsers(){
+    public ResponseEntity<List<UserResponseDto>> ListUsers(){
         var users = userService.listUsers();
 
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(users.stream().map(u -> new UserResponseDto(u.getUserId().toString(), u.getUsername(), u.getEmail())).toList());
     }
 
 

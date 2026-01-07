@@ -25,7 +25,7 @@ public class StockController {
 
         stockService.createStock(createStockDto);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.created(java.net.URI.create("/v1/stocks/" + createStockDto.stockId())).build();
     }
 
 }
