@@ -191,7 +191,7 @@ class UserServiceTest {
             assertEquals(userId, idList.get(1));
 
             verify(userRepository, times(1)).existsById(idList.get(0));
-            verify(userRepository, times(1)).existsById(idList.get(1));
+            verify(userRepository, times(1)).deleteById(idList.get(1));
         }
 
         @Test
