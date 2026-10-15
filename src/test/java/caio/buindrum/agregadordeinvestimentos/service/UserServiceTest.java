@@ -1,8 +1,15 @@
 package caio.buindrum.agregadordeinvestimentos.service;
 
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateAccountDto;
 import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateUserDto;
 import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UpdateUserDto;
+import caio.buindrum.agregadordeinvestimentos.entity.Account;
+import caio.buindrum.agregadordeinvestimentos.entity.BillingAddress;
 import caio.buindrum.agregadordeinvestimentos.entity.User;
+import caio.buindrum.agregadordeinvestimentos.exception.DuplicateResourceException;
+import caio.buindrum.agregadordeinvestimentos.exception.ResourceNotFoundException;
+import caio.buindrum.agregadordeinvestimentos.repository.AccountRepository;
+import caio.buindrum.agregadordeinvestimentos.repository.BillingAddressRepository;
 import caio.buindrum.agregadordeinvestimentos.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,21 +20,34 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AccountRepository accountRepository;
+
+    @Mock
+    private BillingAddressRepository billingAddressRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private AccountService accountService;
 
     @InjectMocks
     private UserService userService;
@@ -38,11 +58,17 @@ class UserServiceTest {
     @Captor
     private ArgumentCaptor<UUID> uuidArgumentCaptor;
 
+    @Captor
+    private ArgumentCaptor<Account> accountArgumentCaptor;
+
+    @Captor
+    private ArgumentCaptor<BillingAddress> billingAddressArgumentCaptor;
+
     @Nested
     class createUser {
 
         @Test
-        @DisplayName("Should create a user with success")
+        @DisplayName("Should create a user with success and hashed password")
         void shouldCreateAUserWithSuccess() {
 
             // Arrange
@@ -50,17 +76,21 @@ class UserServiceTest {
                     UUID.randomUUID(),
                     "username",
                     "email@email.com",
-                    "password",
+                    "encodedPassword123",
                     Instant.now(),
                     null
-
             );
-            doReturn(user).when(userRepository).save(userArgumentCaptor.capture());
+
             var input = new CreateUserDto(
                     "username",
                     "email@email.com",
-                    "123"
+                    "rawPassword123"
             );
+
+            doReturn(false).when(userRepository).existsByUsername(input.username());
+            doReturn(false).when(userRepository).existsByEmail(input.email());
+            doReturn("encodedPassword123").when(passwordEncoder).encode(input.password());
+            doReturn(user).when(userRepository).save(userArgumentCaptor.capture());
 
             // Act
             var output = userService.createUser(input);
@@ -72,36 +102,58 @@ class UserServiceTest {
 
             assertEquals(input.username(), userCaptured.getUsername());
             assertEquals(input.email(), userCaptured.getEmail());
-            assertEquals(input.password(), userCaptured.getPassword());
-
+            assertEquals("encodedPassword123", userCaptured.getPassword());
+            verify(passwordEncoder, times(1)).encode(input.password());
         }
 
         @Test
-        @DisplayName("Should throw exception when error occurs")
+        @DisplayName("Should throw DuplicateResourceException when username is taken")
+        void shouldThrowExceptionWhenUsernameAlreadyExists() {
+            var input = new CreateUserDto("existingUser", "email@email.com", "pass123");
+            doReturn(true).when(userRepository).existsByUsername("existingUser");
+
+            assertThrows(DuplicateResourceException.class, () -> userService.createUser(input));
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw DuplicateResourceException when email is registered")
+        void shouldThrowExceptionWhenEmailAlreadyExists() {
+            var input = new CreateUserDto("newUser", "existing@email.com", "pass123");
+            doReturn(false).when(userRepository).existsByUsername("newUser");
+            doReturn(true).when(userRepository).existsByEmail("existing@email.com");
+
+            assertThrows(DuplicateResourceException.class, () -> userService.createUser(input));
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when repository save error occurs")
         void shouldThrowExceptionErrorOccurs() {
 
             // Arrange
-            doThrow(new RuntimeException()).when(userRepository).save(any());
             var input = new CreateUserDto(
                     "username",
                     "email@email.com",
-                    "123"
+                    "123456"
             );
+            doReturn(false).when(userRepository).existsByUsername(input.username());
+            doReturn(false).when(userRepository).existsByEmail(input.email());
+            doReturn("encoded").when(passwordEncoder).encode(input.password());
+            doThrow(new RuntimeException()).when(userRepository).save(any());
 
             // Act & Assert
             assertThrows(RuntimeException.class, () -> userService.createUser(input));
-
         }
     }
 
     @Nested
-    class getUserById{
+    class getUserById {
 
         @Test
         @DisplayName("Should get user by id with success when optional is present")
         void shouldGetUserByIdWithSuccessWhenOptionalIsPresent() {
 
-            // Arrange
             var user = new User(
                     UUID.randomUUID(),
                     "username",
@@ -109,45 +161,36 @@ class UserServiceTest {
                     "password",
                     Instant.now(),
                     null
-
             );
             doReturn(Optional.of(user)).when(userRepository).findById(uuidArgumentCaptor.capture());
 
-            // Act
             var output = userService.getUserById(user.getUserId().toString());
 
-            // Assert
             assertTrue(output.isPresent());
             assertEquals(user.getUserId(), uuidArgumentCaptor.getValue());
-
         }
 
         @Test
         @DisplayName("Should get user by id with success when optional is empty")
         void shouldGetUserByIdWithSuccessWhenOptionalIsEmpty() {
 
-            // Arrange
             var userId = UUID.randomUUID();
             doReturn(Optional.empty()).when(userRepository).findById(uuidArgumentCaptor.capture());
 
-            // Act
             var output = userService.getUserById(userId.toString());
 
-            // Assert
             assertTrue(output.isEmpty());
             assertEquals(userId, uuidArgumentCaptor.getValue());
-
         }
     }
 
     @Nested
-    class ListUsers{
+    class ListUsers {
 
         @Test
         @DisplayName("Should return all users with success")
         void shouldReturnAllUsersWithSuccess() {
 
-            // Arrange
             var user = new User(
                     UUID.randomUUID(),
                     "username",
@@ -155,37 +198,30 @@ class UserServiceTest {
                     "password",
                     Instant.now(),
                     null
-
             );
             var userList = List.of(user);
             doReturn(userList).when(userRepository).findAll();
 
-            // Act
             var output = userService.listUsers();
 
-            // Assert
             assertNotNull(output);
             assertEquals(userList.size(), output.size());
-
         }
     }
 
     @Nested
-    class deleteById{
+    class deleteById {
 
         @Test
         @DisplayName("Should delete user with success when user exists")
         void shouldDeleteUserWithSuccessWhenUserExists() {
 
-            // Arrange
             doReturn(true).when(userRepository).existsById(uuidArgumentCaptor.capture());
             doNothing().when(userRepository).deleteById(uuidArgumentCaptor.capture());
             var userId = UUID.randomUUID();
 
-            // Act
             userService.deleteById(userId.toString());
 
-            // Assert
             var idList = uuidArgumentCaptor.getAllValues();
             assertEquals(userId, idList.get(0));
             assertEquals(userId, idList.get(1));
@@ -198,67 +234,59 @@ class UserServiceTest {
         @DisplayName("Should not delete user when user NOT exists")
         void shouldNotDeleteUserWhenUserNotExists() {
 
-            // Arrange
             doReturn(false).when(userRepository).existsById(uuidArgumentCaptor.capture());
             var userId = UUID.randomUUID();
 
-            // Act
             userService.deleteById(userId.toString());
 
-            // Assert
             assertEquals(userId, uuidArgumentCaptor.getValue());
 
             verify(userRepository, times(1)).existsById(uuidArgumentCaptor.getValue());
             verify(userRepository, never()).deleteById(any());
         }
-
     }
 
     @Nested
-    class updateUserById{
+    class updateUserById {
 
         @Test
-        @DisplayName("Should update user by id when user exists and username and password is filled")
+        @DisplayName("Should update user by id and encode password when provided")
         void shouldUpdateUserByIdWhenUserExistsAndUsernameAndPasswordIsFilled() {
 
-            // Arrange
             var updateUserDto = new UpdateUserDto(
                     "newUsername",
-                    "newPassword"
+                    "newPassword123"
             );
             var user = new User(
                     UUID.randomUUID(),
                     "username",
                     "email@email.com",
-                    "password",
+                    "oldPassword",
                     Instant.now(),
                     null
-
             );
             doReturn(Optional.of(user)).when(userRepository).findById(uuidArgumentCaptor.capture());
+            doReturn("hashedNewPassword").when(passwordEncoder).encode("newPassword123");
             doReturn(user).when(userRepository).save(userArgumentCaptor.capture());
 
-            // Act
             userService.updateUserById(user.getUserId().toString(), updateUserDto);
 
-            // Assert
             assertEquals(user.getUserId(), uuidArgumentCaptor.getValue());
 
             var userCaptured = userArgumentCaptor.getValue();
 
             assertEquals(updateUserDto.username(), userCaptured.getUsername());
-            assertEquals(updateUserDto.password(), userCaptured.getPassword());
+            assertEquals("hashedNewPassword", userCaptured.getPassword());
 
             verify(userRepository, times(1)).findById(uuidArgumentCaptor.getValue());
             verify(userRepository, times(1)).save(user);
-
+            verify(passwordEncoder, times(1)).encode("newPassword123");
         }
 
         @Test
-        @DisplayName("Should not update user when user not exists ")
+        @DisplayName("Should not update user when user not exists")
         void shouldNotUpdateUserWhenUserNotExists() {
 
-            // Arrange
             var updateUserDto = new UpdateUserDto(
                     "newUsername",
                     "newPassword"
@@ -266,17 +294,58 @@ class UserServiceTest {
             var userId = UUID.randomUUID();
             doReturn(Optional.empty()).when(userRepository).findById(uuidArgumentCaptor.capture());
 
-            // Act
             userService.updateUserById(userId.toString(), updateUserDto);
 
-            // Assert
             assertEquals(userId, uuidArgumentCaptor.getValue());
 
             verify(userRepository, times(1)).findById(uuidArgumentCaptor.getValue());
             verify(userRepository, never()).save(any());
-
         }
-
     }
 
+    @Nested
+    class createAccount {
+
+        @Test
+        @DisplayName("Should create account and billing address inside transaction")
+        void shouldCreateAccountSuccessfully() {
+            var userId = UUID.randomUUID();
+            var user = new User(userId, "caio", "caio@email.com", "pass", Instant.now(), null);
+            user.setAccounts(new ArrayList<>());
+
+            var dto = new CreateAccountDto("XP Investment", "Rua A", 123);
+
+            var createdAccount = new Account(UUID.randomUUID(), user, null, dto.description(), new ArrayList<>());
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+            doReturn(createdAccount).when(accountRepository).save(accountArgumentCaptor.capture());
+            doReturn(new BillingAddress()).when(billingAddressRepository).save(billingAddressArgumentCaptor.capture());
+
+            userService.createAccount(userId.toString(), dto);
+
+            var capturedAccount = accountArgumentCaptor.getValue();
+            var capturedAddress = billingAddressArgumentCaptor.getValue();
+
+            assertEquals(dto.description(), capturedAccount.getDescription());
+            assertEquals(user, capturedAccount.getUser());
+            assertEquals(dto.street(), capturedAddress.getStreet());
+            assertEquals(dto.number(), capturedAddress.getNumber());
+            assertEquals(createdAccount, capturedAddress.getAccount());
+
+            verify(accountRepository, times(1)).save(any());
+            verify(billingAddressRepository, times(1)).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when user does not exist")
+        void shouldThrowWhenUserNotFound() {
+            var userId = UUID.randomUUID();
+            var dto = new CreateAccountDto("XP Investment", "Rua A", 123);
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+
+            assertThrows(ResourceNotFoundException.class, () -> userService.createAccount(userId.toString(), dto));
+            verify(accountRepository, never()).save(any());
+            verify(billingAddressRepository, never()).save(any());
+        }
+    }
 }

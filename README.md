@@ -143,18 +143,25 @@ The composite identifier guarantees that an account cannot hold duplicate, disti
 
 Below is the current set of available endpoints.
 
-| Method | Endpoint | Description | Status |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/v1/users` | Creates a new user | `201 Created` |
-| `GET` | `/v1/users/{userId}` | Retrieves a specific user by ID | `200 OK` / `404 Not Found` |
-| `GET` | `/v1/users` | Retrieves a list of all users | `200 OK` |
-| `PUT` | `/v1/users/{userId}` | Updates a user's details | `204 No Content` |
-| `DELETE` | `/v1/users/{userId}` | Deletes a user by ID | `204 No Content` |
-| `POST` | `/v1/users/{userId}/accounts` | Creates a new investment account for a user | `200 OK` |
-| `GET` | `/v1/users/{userId}/accounts` | Retrieves all accounts for a specific user | `200 OK` |
-| `POST` | `/v1/stocks` | Registers a new stock | `201 Created` |
-| `POST` | `/v1/accounts/{accountId}/stocks` | Associates a stock with an account (position) | `200 OK` |
-| `GET` | `/v1/accounts/{accountId}/stocks` | Retrieves all stock positions for an account | `200 OK` |
+| Method | Endpoint | Description | Auth Required | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/v1/auth/login` | Authenticates user and returns JWT access token | No | `200 OK` / `401 Unauthorized` |
+| `POST` | `/v1/users` | Creates a new user with BCrypt hashed password | No | `201 Created` / `400 Bad Request` |
+| `GET` | `/v1/users/{userId}` | Retrieves a specific user by ID | Yes (Bearer) | `200 OK` / `404 Not Found` |
+| `GET` | `/v1/users` | Retrieves a list of all users | Yes (Bearer) | `200 OK` |
+| `PUT` | `/v1/users/{userId}` | Updates a user's details | Yes (Bearer) | `204 No Content` / `400 Bad Request` |
+| `DELETE` | `/v1/users/{userId}` | Deletes a user by ID | Yes (Bearer) | `204 No Content` |
+| `POST` | `/v1/users/{userId}/accounts` | Creates a new investment account for a user (Transactional) | Yes (Bearer) | `200 OK` / `400 Bad Request` |
+| `GET` | `/v1/users/{userId}/accounts` | Retrieves all accounts for a specific user | Yes (Bearer) | `200 OK` |
+| `GET` | `/v1/users/{userId}/valuation` | Calculates real-time total net worth across all user accounts | Yes (Bearer) | `200 OK` / `404 Not Found` |
+| `POST` | `/v1/stocks` | Registers a new stock ticker | Yes (Bearer) | `201 Created` / `409 Conflict` |
+| `GET` | `/v1/stocks` | Lists all registered stock tickers | Yes (Bearer) | `200 OK` |
+| `GET` | `/v1/stocks/{stockId}` | Retrieves stock ticker details | Yes (Bearer) | `200 OK` / `404 Not Found` |
+| `POST` | `/v1/accounts/{accountId}/stocks` | Associates a stock with an account (Transactional) | Yes (Bearer) | `200 OK` / `400 Bad Request` |
+| `GET` | `/v1/accounts/{accountId}/stocks` | Retrieves all stock positions with live prices and totals | Yes (Bearer) | `200 OK` |
+| `GET` | `/v1/accounts/{accountId}/valuation` | Calculates real-time account valuation based on live stock prices | Yes (Bearer) | `200 OK` / `404 Not Found` |
+| `GET` | `/swagger-ui.html` | Interactive Swagger UI API documentation | No | `200 OK` |
+| `GET` | `/v3/api-docs` | OpenAPI 3 JSON specification | No | `200 OK` |
 
 ### 📄 Example Payloads
 
@@ -266,21 +273,29 @@ spring.datasource.username=root
 spring.datasource.password=root
 
 spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
-spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=validate
+
+# Flyway Migrations
+spring.flyway.enabled=true
+spring.flyway.baseline-on-migrate=true
+spring.flyway.baseline-version=0
+
+# Security (JWT)
+security.jwt.secret-key=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+security.jwt.expiration-ms=86400000
+
+# OpenAPI / Swagger UI
+springdoc.swagger-ui.path=/swagger-ui.html
 ```
 
-> [!WARNING]
-> The property `spring.jpa.hibernate.ddl-auto=update` is used here strictly for local development convenience. In a production environment, this must be disabled in favor of a robust database migration tool like **Flyway** or **Liquibase**.
-> 
-> Credentials stored in this file are for local development purposes only.
+> [!NOTE]
+> Database schema definitions are strictly version-controlled via **Flyway** in `src/main/resources/db/migration/`. Hibernate runs in `validate` mode to enforce schema consistency.
 
 ---
 
 ## 🧪 Testing
 
-The repository relies on **JUnit 5** and **Mockito** for testing. 
-
-Unit tests are focused on isolating the `Service` layer to validate core business logic without spinning up the entire Spring context or requiring a database connection.
+The repository relies on **JUnit 5**, **Mockito**, and in-memory **H2** for comprehensive unit and integration testing. 
 
 To execute the test suite:
 **Linux / macOS:**
@@ -296,20 +311,24 @@ To execute the test suite:
 
 ## 🛠️ Engineering Improvements
 
-The following codebase fixes and structural engineering improvements have been successfully applied:
+The following codebase fixes and structural enterprise engineering improvements have been successfully applied:
 
-- **Generated UUID for User IDs**: Migrated from sequential integers to `UUID`s for better distributed system compatibility.
-- **Entity Collections Initialization**: Instantiated `List` collections at declaration (`= new ArrayList<>()`) within entities to prevent `NullPointerException`s when appending items before persistence.
-- **MySQL Dialect Alignment**: Updated the Hibernate dialect configuration specifically for MySQL 8 to leverage modern database features.
-- **Controller Method Naming Corrections**: Refactored `StockController` methods to follow standard Java naming conventions.
-- **Maven Clean-Up**: Removed unused Maven metadata and optimized the dependency tree.
-- **Test Verification Fixes**: Corrected `Mockito.verify()` assertions within `UserServiceTest` to accurately test deletion logic.
+- **Bean Validation (@Valid)**: Strict validation rules across all incoming DTOs (`@NotBlank`, `@Email`, `@Size`, `@Pattern`, `@Positive`).
+- **Global Exception Handling (@RestControllerAdvice)**: Unified, standardized `ApiErrorResponse` model with timestamp, status code, error message, path, and field-level validation error breakdowns.
+- **Spring Security & JWT Authentication**: Stateless Bearer token security with `JwtService`, custom `JwtAuthenticationFilter`, `AuthenticationEntryPoint`, and `BCryptPasswordEncoder` password hashing.
+- **Flyway Database Migrations**: Reproducible, version-controlled relational schema migrations (`V1__init_schema.sql`).
+- **Real-Time Portfolio Valuation**: Dynamic valuation engine (`StockPriceService`) calculating live position totals and aggregated account/user net worth.
+- **Transaction Boundaries (@Transactional)**: Atomicity and consistency guarantees preventing partial writes during multi-step domain orchestrations.
+- **OpenAPI 3 / Swagger UI**: Living, interactive API documentation accessible at `http://localhost:8080/swagger-ui.html` with Bearer JWT authorize support.
+- **Generated UUID for User IDs**: Migrated to `UUID`s for distributed system compatibility.
+- **Entity Collections Initialization**: Instantiated `List` collections at declaration to prevent `NullPointerException`s.
+- **Composite Key Best Practices**: Implemented `Serializable`, `equals`, and `hashCode` on `AccountStockId`.
 
 ---
 
-## 🗺️ Roadmap & Limitations
+## 🗺️ Roadmap & Milestones
 
-While the core functionality is established, this project is treated as an iteratively evolving system. The checklist below separates current capabilities from future engineering milestones.
+All major enterprise backend milestones have been successfully completed:
 
 ### Implemented Features
 - [x] User management (CRUD)
@@ -319,12 +338,11 @@ While the core functionality is established, this project is treated as an itera
 - [x] Account-Stock associations (Portfolio positions)
 - [x] MySQL persistence layer
 - [x] Docker Compose development environment setup
+- [x] **Bean Validation**: Implemented `@Valid` constraints on incoming DTOs.
+- [x] **Global Exception Handling**: Introduced `@ControllerAdvice` for consistent API error responses.
+- [x] **Security (Auth)**: Implemented Spring Security with JWT and BCrypt password hashing.
+- [x] **Database Migrations**: Adopted Flyway for strict version-controlled schema definitions.
+- [x] **Portfolio Valuation**: Provided real-time APIs to calculate total position values based on current stock prices.
+- [x] **Transaction Boundaries**: Implemented `@Transactional` properly to handle partial failures during orchestrations.
+- [x] **OpenAPI / Swagger**: Auto-generated living API documentation with Swagger UI.
 
-### Future Improvements
-- [ ] **Bean Validation**: Implement `@Valid` constraints on incoming DTOs.
-- [ ] **Global Exception Handling**: Introduce `@ControllerAdvice` for consistent API error responses.
-- [ ] **Security (Auth)**: Implement Spring Security with JWT and BCrypt password hashing.
-- [ ] **Database Migrations**: Adopt Flyway for strict version-controlled schema definitions.
-- [ ] **Portfolio Valuation**: Provide real-time APIs to calculate total position values based on current stock prices.
-- [ ] **Transaction Boundaries**: Implement `@Transactional` properly to handle partial failures during orchestrations.
-- [ ] **OpenAPI / Swagger**: Auto-generate living API documentation.
