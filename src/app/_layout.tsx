@@ -8,11 +8,14 @@ import Toast from 'react-native-toast-message';
 import { TrendingUp } from 'lucide-react-native';
 import { queryClient } from '@/shared/lib/queryClient';
 import { useAuthStore } from '@/shared/stores/authStore';
+import { useThemeStore } from '@/shared/stores/themeStore';
 import { toastConfig } from '@/shared/components/feedback/ToastConfig';
 import '../global.css';
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
   const segments = useSegments();
   const router = useRouter();
 
@@ -26,27 +29,34 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redireciona para o login se não estiver autenticado
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redireciona para o app autenticado se já estiver logado
       router.replace('/(app)');
     }
   }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background items-center justify-center p-6">
-        <View className="w-20 h-20 rounded-3xl bg-primary/20 border border-primary/30 items-center justify-center mb-6 shadow-2xl shadow-primary/40">
-          <TrendingUp size={40} color="#3B82F6" />
+      <View className="flex-1 bg-black items-center justify-center p-6">
+        <View
+          style={{
+            backgroundColor: isPink ? 'rgba(255, 0, 127, 0.15)' : 'rgba(255, 255, 255, 0.12)',
+            borderColor: isPink ? 'rgba(255, 0, 127, 0.4)' : 'rgba(255, 255, 255, 0.3)',
+            shadowColor: isPink ? '#FF007F' : '#FFFFFF',
+            shadowOpacity: 0.5,
+            shadowRadius: 20,
+          }}
+          className="w-20 h-20 rounded-3xl border items-center justify-center mb-6"
+        >
+          <TrendingUp size={40} color={isPink ? '#FF007F' : '#FFFFFF'} />
         </View>
-        <Text className="text-xl font-bold text-foreground tracking-tight mb-2">
+        <Text className="text-2xl font-black text-white tracking-tight mb-2">
           Agregador de Investimentos
         </Text>
-        <Text className="text-xs text-muted-foreground mb-6">
+        <Text className="text-xs text-zinc-400 mb-6">
           Sua carteira inteligente de investimentos
         </Text>
-        <ActivityIndicator size="small" color="#3B82F6" />
+        <ActivityIndicator size="small" color={isPink ? '#FF007F' : '#FFFFFF'} />
       </View>
     );
   }
@@ -56,7 +66,7 @@ function RootLayoutNav() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#0B1120' },
+          contentStyle: { backgroundColor: '#000000' },
           animation: 'fade',
         }}
       >
@@ -73,7 +83,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="light" backgroundColor="#0B1120" />
+        <StatusBar style="light" backgroundColor="#000000" />
         <RootLayoutNav />
       </QueryClientProvider>
     </SafeAreaProvider>

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircle, Search } from 'lucide-react-native';
+import { PlusCircle } from 'lucide-react-native';
 import { BottomSheet } from '@/shared/components/ui/BottomSheet';
 import { Input } from '@/shared/components/ui/Input';
 import { Button } from '@/shared/components/ui/Button';
 import { associateStockSchema, AssociateStockFormData } from '../schemas/accountSchemas';
 import { useStocksData } from '@/features/stocks/hooks/useStocksData';
+import { useThemeStore } from '@/shared/stores/themeStore';
 import { haptic } from '@/shared/utils/haptics';
 
 export interface AddPositionModalProps {
@@ -25,6 +26,8 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
 }) => {
   const { stocks } = useStocksData();
   const [tickerSearch, setTickerSearch] = useState('');
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
 
   const {
     control,
@@ -69,7 +72,7 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
         onClose();
       }}
       title="Adicionar Ativo à Conta"
-      subtitle="Vincule ações e ativos mantidos nesta corretora"
+      subtitle="Vincule ações mantidas nesta corretora"
     >
       <ScrollView showsVerticalScrollIndicator={false} className="max-h-[500px]">
         {/* Ticker Input */}
@@ -95,8 +98,18 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
 
         {/* Quick select from catalog if matches */}
         {filteredStocks.length > 0 && tickerSearch.length > 0 && (
-          <View className="mb-4 bg-card-hover/40 border border-border p-2.5 rounded-xl">
-            <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <View
+            style={{
+              backgroundColor: '#09090C',
+              borderColor: isPink ? '#261426' : '#222222',
+              borderWidth: 1,
+            }}
+            className="mb-4 p-3 rounded-2xl"
+          >
+            <Text
+              style={{ color: isPink ? '#FF007F' : '#FFFFFF' }}
+              className="text-[11px] font-bold uppercase tracking-wider mb-2"
+            >
               Ativos Encontrados no Catálogo:
             </Text>
             <View className="flex-row flex-wrap gap-2">
@@ -104,10 +117,20 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
                 <TouchableOpacity
                   key={stock.stockId}
                   onPress={() => handleSelectStock(stock.stockId)}
-                  className="px-3 py-1.5 rounded-lg bg-card border border-border flex-row items-center gap-1.5 active:bg-primary/20"
+                  style={{
+                    backgroundColor: '#141418',
+                    borderColor: isPink ? '#2E152E' : '#2C2C2C',
+                    borderWidth: 1,
+                  }}
+                  className="px-3 py-1.5 rounded-xl flex-row items-center gap-1.5 active:opacity-80"
                 >
-                  <Text className="text-xs font-bold text-primary">{stock.stockId}</Text>
-                  <Text className="text-[10px] text-muted-foreground" numberOfLines={1}>
+                  <Text
+                    style={{ color: isPink ? '#FF007F' : '#FFFFFF' }}
+                    className="text-xs font-black"
+                  >
+                    {stock.stockId}
+                  </Text>
+                  <Text className="text-[10px] text-zinc-400" numberOfLines={1}>
                     {stock.description}
                   </Text>
                 </TouchableOpacity>
@@ -135,7 +158,7 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
 
         {/* Quick Quantity Chips */}
         <View className="flex-row items-center gap-2 mb-6">
-          <Text className="text-xs text-muted-foreground">Atalhos:</Text>
+          <Text className="text-xs text-zinc-400">Atalhos:</Text>
           {[10, 50, 100, 500].map((qty) => (
             <TouchableOpacity
               key={qty}
@@ -143,9 +166,14 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
                 haptic.selection();
                 setValue('quantity', qty, { shouldValidate: true });
               }}
-              className="px-3 py-1 rounded-lg bg-card border border-border active:bg-card-hover"
+              style={{
+                backgroundColor: '#09090C',
+                borderColor: isPink ? '#261426' : '#222222',
+                borderWidth: 1,
+              }}
+              className="px-3.5 py-1.5 rounded-xl active:bg-zinc-900"
             >
-              <Text className="text-xs font-semibold text-foreground">+{qty}</Text>
+              <Text className="text-xs font-extrabold text-white">+{qty}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -154,7 +182,7 @@ export const AddPositionModal: React.FC<AddPositionModalProps> = ({
         <Button
           variant="primary"
           size="lg"
-          leftIcon={<PlusCircle size={18} color="#FFFFFF" />}
+          leftIcon={<PlusCircle size={18} color={isPink ? '#FFFFFF' : '#000000'} />}
           isLoading={isLoading}
           onPress={handleSubmit(onSubmit)}
           className="w-full mb-2"

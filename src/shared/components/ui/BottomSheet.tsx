@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { haptic } from '@/shared/utils/haptics';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -29,6 +30,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 }) => {
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
 
   useEffect(() => {
     if (visible) {
@@ -78,37 +81,45 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View
             style={{ opacity: fadeAnim }}
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/80"
           />
         </TouchableWithoutFeedback>
 
         <Animated.View
-          style={{ transform: [{ translateY: slideAnim }] }}
-          className="bg-card border-t border-border rounded-t-3xl pt-3 pb-8 px-5 shadow-2xl max-h-[85%]"
+          style={{
+            transform: [{ translateY: slideAnim }],
+            backgroundColor: '#09090C',
+            borderTopColor: isPink ? '#2E152E' : '#272727',
+            borderTopWidth: 1.5,
+          }}
+          className="rounded-t-3xl pt-3 pb-8 px-5 shadow-2xl max-h-[85%]"
         >
           {/* Drag Handle Indicator */}
           <View className="items-center pb-3">
-            <View className="w-12 h-1.5 rounded-full bg-border" />
+            <View
+              style={{ backgroundColor: isPink ? '#FF007F' : '#FFFFFF', opacity: 0.4 }}
+              className="w-12 h-1.5 rounded-full"
+            />
           </View>
 
           {/* Header */}
           {(title || subtitle) && (
-            <View className="flex-row items-center justify-between pb-4 border-b border-border/50 mb-4">
+            <View className="flex-row items-center justify-between pb-4 border-b border-zinc-900 mb-4">
               <View className="flex-1 pr-2">
                 {title && (
-                  <Text className="text-lg font-bold text-foreground">{title}</Text>
+                  <Text className="text-lg font-black text-white">{title}</Text>
                 )}
                 {subtitle && (
-                  <Text className="text-xs text-muted-foreground mt-0.5">{subtitle}</Text>
+                  <Text className="text-xs text-zinc-400 mt-0.5">{subtitle}</Text>
                 )}
               </View>
 
               <TouchableOpacity
                 onPress={handleClose}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                className="w-8 h-8 rounded-full bg-border/40 items-center justify-center active:bg-border"
+                className="w-8 h-8 rounded-full bg-zinc-900 items-center justify-center active:bg-zinc-800"
               >
-                <X size={18} color="#94A3B8" />
+                <X size={18} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
           )}

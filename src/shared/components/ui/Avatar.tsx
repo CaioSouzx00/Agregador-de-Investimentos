@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ViewProps } from 'react-native';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export interface AvatarProps extends ViewProps {
   name: string;
@@ -12,8 +13,12 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   showOnlineDot = false,
   className = '',
+  style,
   ...props
 }) => {
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
+
   const getInitials = (str: string): string => {
     if (!str) return '?';
     const parts = str.trim().split(/\s+/);
@@ -43,16 +48,27 @@ export const Avatar: React.FC<AvatarProps> = ({
   return (
     <View className="relative">
       <View
-        className={`${sizeClasses.container} bg-primary/20 border border-primary/30 items-center justify-center ${className}`}
+        style={[
+          {
+            backgroundColor: isPink ? 'rgba(255, 0, 127, 0.15)' : 'rgba(255, 255, 255, 0.15)',
+            borderColor: isPink ? 'rgba(255, 0, 127, 0.4)' : 'rgba(255, 255, 255, 0.3)',
+            borderWidth: 1,
+          },
+          style,
+        ]}
+        className={`${sizeClasses.container} items-center justify-center ${className}`}
         {...props}
       >
-        <Text className={`font-bold text-primary ${sizeClasses.text}`}>
+        <Text
+          style={{ color: isPink ? '#FF007F' : '#FFFFFF' }}
+          className={`font-black ${sizeClasses.text}`}
+        >
           {initials}
         </Text>
       </View>
       {showOnlineDot && (
         <View
-          className={`absolute bottom-0 right-0 ${sizeClasses.dot} rounded-full bg-success ring-2 ring-background`}
+          className={`absolute bottom-0 right-0 ${sizeClasses.dot} rounded-full bg-emerald-500 ring-2 ring-black`}
         />
       )}
     </View>

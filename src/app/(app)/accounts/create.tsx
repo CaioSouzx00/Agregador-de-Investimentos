@@ -21,10 +21,13 @@ import {
   CreateAccountFormData,
 } from '@/features/accounts/schemas/accountSchemas';
 import { useCreateAccountMutation } from '@/features/accounts/hooks/useAccountsData';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export default function CreateAccountScreen() {
   const router = useRouter();
   const createMutation = useCreateAccountMutation();
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
 
   const {
     control,
@@ -47,8 +50,19 @@ export default function CreateAccountScreen() {
     });
   };
 
+  const DismissibleWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (Platform.OS === 'web') {
+      return <View style={{ flex: 1 }}>{children}</View>;
+    }
+    return (
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>{children}</View>
+      </TouchableWithoutFeedback>
+    );
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <Header
         title="Nova Conta de Investimento"
         subtitle="Vincule uma corretora com endereço de faturamento"
@@ -58,20 +72,27 @@ export default function CreateAccountScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        className="flex-1 bg-black"
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <DismissibleWrapper>
           <ScrollView
             contentContainerStyle={{ padding: 20 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {/* Account Info Card */}
-            <View className="bg-card border border-border p-5 rounded-3xl mb-5 shadow-sm">
-              <Text className="text-sm font-bold text-foreground mb-1">
+            <View
+              style={{
+                backgroundColor: '#09090C',
+                borderColor: isPink ? '#261426' : '#222222',
+                borderWidth: 1,
+              }}
+              className="p-5 rounded-3xl mb-5"
+            >
+              <Text className="text-sm font-extrabold text-white mb-1">
                 Identificação da Conta
               </Text>
-              <Text className="text-xs text-muted-foreground mb-4">
+              <Text className="text-xs text-zinc-400 mb-4">
                 Informe o nome da instituição ou corretora financeira
               </Text>
 
@@ -86,18 +107,25 @@ export default function CreateAccountScreen() {
                     onChangeText={onChange}
                     onBlur={onBlur}
                     error={errors.description?.message}
-                    leftIcon={<Landmark size={18} color="#64748B" />}
+                    leftIcon={<Landmark size={18} color="#71717A" />}
                   />
                 )}
               />
             </View>
 
             {/* Billing Address Card */}
-            <View className="bg-card border border-border p-5 rounded-3xl mb-6 shadow-sm">
-              <Text className="text-sm font-bold text-foreground mb-1">
+            <View
+              style={{
+                backgroundColor: '#09090C',
+                borderColor: isPink ? '#261426' : '#222222',
+                borderWidth: 1,
+              }}
+              className="p-5 rounded-3xl mb-6"
+            >
+              <Text className="text-sm font-extrabold text-white mb-1">
                 Endereço de Cobrança / Faturamento
               </Text>
-              <Text className="text-xs text-muted-foreground mb-4">
+              <Text className="text-xs text-zinc-400 mb-4">
                 Requisito regulatório exigido pela instituição
               </Text>
 
@@ -112,7 +140,7 @@ export default function CreateAccountScreen() {
                     onChangeText={onChange}
                     onBlur={onBlur}
                     error={errors.street?.message}
-                    leftIcon={<MapPin size={18} color="#64748B" />}
+                    leftIcon={<MapPin size={18} color="#71717A" />}
                     containerClassName="mb-3.5"
                   />
                 )}
@@ -130,7 +158,7 @@ export default function CreateAccountScreen() {
                     onChangeText={onChange}
                     onBlur={onBlur}
                     error={errors.number?.message}
-                    leftIcon={<Hash size={18} color="#64748B" />}
+                    leftIcon={<Hash size={18} color="#71717A" />}
                   />
                 )}
               />
@@ -141,14 +169,14 @@ export default function CreateAccountScreen() {
               variant="primary"
               size="lg"
               isLoading={createMutation.isPending}
-              leftIcon={<Check size={18} color="#FFFFFF" />}
+              leftIcon={<Check size={18} color={isPink ? '#FFFFFF' : '#000000'} />}
               onPress={handleSubmit(onSubmit)}
               className="w-full"
             >
               Registrar Conta
             </Button>
           </ScrollView>
-        </TouchableWithoutFeedback>
+        </DismissibleWrapper>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

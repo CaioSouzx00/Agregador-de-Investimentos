@@ -19,9 +19,11 @@ import { CurrencyText } from '@/shared/components/ui/CurrencyText';
 import { Skeleton, SkeletonCard } from '@/shared/components/ui/Skeleton';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
+import { ThemeToggle } from '@/shared/components/ui/ThemeToggle';
 import { PositionItem } from '@/features/portfolio/components/PositionItem';
 import { AddPositionModal } from '@/features/accounts/components/AddPositionModal';
 import { useAccountDetailData } from '@/features/accounts/hooks/useAccountDetailData';
+import { useThemeStore } from '@/shared/stores/themeStore';
 import { haptic } from '@/shared/utils/haptics';
 
 type SortOption = 'value_desc' | 'ticker_asc' | 'quantity_desc';
@@ -31,6 +33,8 @@ export default function AccountDetailScreen() {
   const router = useRouter();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('value_desc');
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
 
   const {
     account,
@@ -77,42 +81,56 @@ export default function AccountDetailScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <Header
         title={account?.description || 'Detalhes da Conta'}
         subtitle="Posições e rentabilidade consolidada"
         showBackButton
         onBackPress={() => router.back()}
         rightAction={
-          <TouchableOpacity
-            onPress={() => {
-              haptic.light();
-              setIsModalVisible(true);
-            }}
-            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary active:opacity-90 shadow-md shadow-primary/25"
-          >
-            <Plus size={16} color="#FFFFFF" />
-            <Text className="text-xs font-bold text-white">Adicionar</Text>
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            <ThemeToggle compact />
+            <TouchableOpacity
+              onPress={() => {
+                haptic.light();
+                setIsModalVisible(true);
+              }}
+              style={{
+                backgroundColor: isPink ? '#FF007F' : '#FFFFFF',
+                shadowColor: isPink ? '#FF007F' : '#FFFFFF',
+                shadowOpacity: 0.35,
+                shadowRadius: 10,
+              }}
+              className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-90"
+            >
+              <Plus size={16} color={isPink ? '#FFFFFF' : '#000000'} />
+              <Text
+                style={{ color: isPink ? '#FFFFFF' : '#000000' }}
+                className="text-xs font-black"
+              >
+                Adicionar
+              </Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        className="flex-1 px-5"
+        className="flex-1 px-5 bg-black"
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor="#3B82F6"
-            colors={['#3B82F6']}
+            tintColor={isPink ? '#FF007F' : '#FFFFFF'}
+            colors={[isPink ? '#FF007F' : '#FFFFFF']}
           />
         }
       >
         {isLoading ? (
           <View className="pt-5 gap-4">
-            <Skeleton width="100%" height={130} borderRadius={24} />
+            <Skeleton width="100%" height={140} borderRadius={24} />
             <SkeletonCard />
             <SkeletonCard />
           </View>
@@ -123,16 +141,33 @@ export default function AccountDetailScreen() {
         ) : (
           <View className="pt-5 gap-6">
             {/* Account Hero Card */}
-            <View className="bg-card border border-border p-5 rounded-3xl shadow-xl shadow-black/40">
+            <View
+              style={{
+                backgroundColor: '#09090C',
+                borderColor: isPink ? '#2E152E' : '#272727',
+                borderWidth: 1.5,
+                shadowColor: isPink ? '#FF007F' : '#FFFFFF',
+                shadowOpacity: isPink ? 0.3 : 0.15,
+                shadowRadius: 24,
+              }}
+              className="p-5 rounded-3xl"
+            >
               <View className="flex-row items-center gap-3 mb-3">
-                <View className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 items-center justify-center">
-                  <Landmark size={22} color="#3B82F6" />
+                <View
+                  style={{
+                    backgroundColor: isPink ? 'rgba(255, 0, 127, 0.15)' : 'rgba(255, 255, 255, 0.12)',
+                    borderColor: isPink ? 'rgba(255, 0, 127, 0.4)' : 'rgba(255, 255, 255, 0.3)',
+                    borderWidth: 1,
+                  }}
+                  className="w-12 h-12 rounded-2xl items-center justify-center"
+                >
+                  <Landmark size={22} color={isPink ? '#FF007F' : '#FFFFFF'} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <Text className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                     Saldo Total na Corretora
                   </Text>
-                  <Text className="text-lg font-bold text-foreground">
+                  <Text className="text-xl font-black text-white">
                     {account?.description}
                   </Text>
                 </View>
@@ -142,11 +177,14 @@ export default function AccountDetailScreen() {
                 <CurrencyText value={totalPortfolioValue} size="2xl" />
               </View>
 
-              <View className="flex-row items-center justify-between pt-3 border-t border-border/50 mt-3">
-                <Text className="text-xs text-muted-foreground">
+              <View className="flex-row items-center justify-between pt-3 border-t border-zinc-900 mt-3">
+                <Text className="text-xs text-zinc-400">
                   {positions.length} {positions.length === 1 ? 'posição ativa' : 'posições ativas'}
                 </Text>
-                <Text className="text-xs text-primary font-medium">
+                <Text
+                  style={{ color: isPink ? '#FF007F' : '#FFFFFF' }}
+                  className="text-xs font-bold"
+                >
                   Cotações B3 em tempo real
                 </Text>
               </View>
@@ -155,18 +193,23 @@ export default function AccountDetailScreen() {
             {/* Positions Section */}
             <View>
               <View className="flex-row items-center justify-between mb-3.5">
-                <Text className="text-base font-bold text-foreground tracking-tight">
+                <Text className="text-base font-bold text-white tracking-tight">
                   Ativos em Custódia
                 </Text>
 
                 {positions.length > 1 && (
                   <TouchableOpacity
                     onPress={toggleSort}
-                    className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-lg bg-card border border-border"
+                    style={{
+                      backgroundColor: '#09090C',
+                      borderColor: isPink ? '#261426' : '#222222',
+                      borderWidth: 1,
+                    }}
+                    className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl"
                   >
-                    <ArrowUpDown size={12} color="#94A3B8" />
-                    <Text className="text-xs text-muted-foreground">
-                      Ordem: <Text className="text-foreground font-semibold">{getSortLabel()}</Text>
+                    <ArrowUpDown size={12} color={isPink ? '#FF007F' : '#A1A1AA'} />
+                    <Text className="text-xs text-zinc-400">
+                      Ordem: <Text className="text-white font-bold">{getSortLabel()}</Text>
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -174,7 +217,7 @@ export default function AccountDetailScreen() {
 
               {sortedPositions.length === 0 ? (
                 <EmptyState
-                  icon={<Layers size={32} color="#64748B" />}
+                  icon={<Layers size={32} color={isPink ? '#FF007F' : '#FFFFFF'} />}
                   title="Nenhum ativo vinculado"
                   description="Você ainda não adicionou ações ou ativos nesta conta de investimentos."
                   actionLabel="Adicionar Primeiro Ativo"
