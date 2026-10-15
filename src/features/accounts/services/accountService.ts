@@ -31,6 +31,33 @@ export const accountService = {
     accountId: string,
     payload: AssociateAccountStockRequest
   ): Promise<void> => {
-    await apiClient.post(`/v1/accounts/${accountId}/stocks`, payload);
+    const stockId = payload.stockId.trim().toUpperCase();
+    try {
+      await apiClient.post(`/v1/accounts/${accountId}/stocks`, {
+        ...payload,
+        stockId,
+      });
+    } catch (err: any) {
+      // If stock not registered in backend catalog, auto-register it and retry association
+      const message = err?.response?.data?.message || '';
+      if (err?.response?.status === 404 && (message.includes('Stock not found') || message.includes('not found with id'))) {
+        try {
+          await apiClient.post('/v1/stocks', {
+            stockId,
+            description: `${stockId} - Ação / Ativo`,
+          });
+          // Retry associating with freshly created stock
+          await apiClient.post(`/v1/accounts/${accountId}/stocks`, {
+            ...payload,
+            stockId,
+          });
+          return;
+        } catch (innerError) {
+          // If creation fails (e.g. permission or duplicate), rethrow original error
+          throw err;
+        }
+      }
+      throw err;
+    }
   },
 };
