@@ -1,19 +1,17 @@
 package caio.buindrum.agregadordeinvestimentos.service;
 
-import caio.buindrum.agregadordeinvestimentos.Controller.Dto.AccountResponseDto;
-import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateAccountDto;
-import caio.buindrum.agregadordeinvestimentos.Controller.Dto.CreateUserDto;
-import caio.buindrum.agregadordeinvestimentos.Controller.Dto.UpdateUserDto;
+import caio.buindrum.agregadordeinvestimentos.Controller.Dto.*;
 import caio.buindrum.agregadordeinvestimentos.entity.Account;
 import caio.buindrum.agregadordeinvestimentos.entity.BillingAddress;
+import caio.buindrum.agregadordeinvestimentos.entity.User;
+import caio.buindrum.agregadordeinvestimentos.exception.DuplicateResourceException;
+import caio.buindrum.agregadordeinvestimentos.exception.ResourceNotFoundException;
 import caio.buindrum.agregadordeinvestimentos.repository.AccountRepository;
 import caio.buindrum.agregadordeinvestimentos.repository.BillingAddressRepository;
 import caio.buindrum.agregadordeinvestimentos.repository.UserRepository;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import caio.buindrum.agregadordeinvestimentos.entity.User;
-import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,26 +24,41 @@ import static java.util.Objects.isNull;
 @Service
 public class UserService {
 
-    private UserRepository userRepository;
-    private AccountRepository accountRepositoy;
-    private BillingAddressRepository billingAddressRepository;
+    private final UserRepository userRepository;
+    private final AccountRepository accountRepositoy;
+    private final BillingAddressRepository billingAddressRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AccountService accountService;
 
     public UserService(UserRepository userRepository,
                        AccountRepository accountRepositoy,
-                       BillingAddressRepository billingAddressRepository) {
+                       BillingAddressRepository billingAddressRepository,
+                       PasswordEncoder passwordEncoder,
+                       AccountService accountService) {
         this.userRepository = userRepository;
         this.accountRepositoy = accountRepositoy;
         this.billingAddressRepository = billingAddressRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.accountService = accountService;
     }
 
+    @Transactional
     public UUID createUser(CreateUserDto createUserDto) {
 
-        // DTO -> ENTITY
+        if (userRepository.existsByUsername(createUserDto.username())) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+
+        if (userRepository.existsByEmail(createUserDto.email())) {
+            throw new DuplicateResourceException("Email is already registered");
+        }
+
+        // DTO -> ENTITY with hashed password
         var entity = new User(
                 UUID.randomUUID(),
                 createUserDto.username(),
                 createUserDto.email(),
-                createUserDto.password(),
+                passwordEncoder.encode(createUserDto.password()),
                 Instant.now(),
                 null);
 
@@ -54,17 +67,18 @@ public class UserService {
         return userSaved.getUserId();
     }
 
+    @Transactional(readOnly = true)
     public Optional<User> getUserById(String userId) {
-
         return userRepository.findById(UUID.fromString(userId));
     }
 
+    @Transactional(readOnly = true)
     public List<User> listUsers() {
         return userRepository.findAll();
     }
 
-    public void updateUserById(String userId,
-                               UpdateUserDto updateUserDto) {
+    @Transactional
+    public void updateUserById(String userId, UpdateUserDto updateUserDto) {
 
         var id = UUID.fromString(userId);
 
@@ -73,19 +87,19 @@ public class UserService {
         if (userEntity.isPresent()) {
             var user = userEntity.get();
 
-            if (updateUserDto.username() != null) {
+            if (updateUserDto.username() != null && !updateUserDto.username().isBlank()) {
                 user.setUsername(updateUserDto.username());
             }
 
-            if (updateUserDto.password() != null) {
-                user.setPassword(updateUserDto.password());
+            if (updateUserDto.password() != null && !updateUserDto.password().isBlank()) {
+                user.setPassword(passwordEncoder.encode(updateUserDto.password()));
             }
 
             userRepository.save(user);
         }
-
     }
 
+    @Transactional
     public void deleteById(String userId) {
 
         var id = UUID.fromString(userId);
@@ -97,10 +111,11 @@ public class UserService {
         }
     }
 
+    @Transactional
     public void createAccount(String userId, CreateAccountDto createAccountDto) {
 
         var user = userRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não existe"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         if (isNull(user.getAccounts())) {
             user.setAccounts(new ArrayList<>());
@@ -127,17 +142,41 @@ public class UserService {
         billingAddressRepository.save(billingAddress);
     }
 
+    @Transactional(readOnly = true)
     public List<Account> findAccounts(String userId) {
         var user = userRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não existe"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         return user.getAccounts();
     }
 
+    @Transactional(readOnly = true)
     public List<AccountResponseDto> ListAccounts(String userId) {
         var user = userRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não existe"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         return user.getAccounts().stream().map(ac -> new AccountResponseDto(ac.getAccountId().toString(), ac.getDescription())).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UserValuationResponseDto getUserValuation(String userId) {
+        var user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        List<AccountValuationResponseDto> accountValuations = user.getAccounts().stream()
+                .map(accountService::buildAccountValuation)
+                .toList();
+
+        double totalNetWorth = accountValuations.stream()
+                .mapToDouble(AccountValuationResponseDto::totalPortfolioValue)
+                .sum();
+
+        return new UserValuationResponseDto(
+                user.getUserId().toString(),
+                user.getUsername(),
+                Math.round(totalNetWorth * 100.0) / 100.0,
+                accountValuations,
+                Instant.now()
+        );
     }
 }
