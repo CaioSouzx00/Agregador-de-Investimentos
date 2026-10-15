@@ -55,7 +55,7 @@ public class UserService {
 
         // DTO -> ENTITY with hashed password
         var entity = new User(
-                UUID.randomUUID(),
+                null,
                 createUserDto.username(),
                 createUserDto.email(),
                 passwordEncoder.encode(createUserDto.password()),
