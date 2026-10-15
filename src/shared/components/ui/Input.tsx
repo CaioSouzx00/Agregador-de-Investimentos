@@ -1,13 +1,16 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState, forwardRef, useRef, useImperativeHandle } from 'react';
 import {
   View,
   Text,
   TextInput,
   TextInputProps,
   TouchableOpacity,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Eye, EyeOff, Search, X } from 'lucide-react-native';
 import { haptic } from '@/shared/utils/haptics';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export interface InputProps extends TextInputProps {
   label?: string;
@@ -30,35 +33,59 @@ export const Input = forwardRef<TextInput, InputProps>(
       className = '',
       onFocus,
       onBlur,
+      style,
       ...rest
     },
     ref
   ) => {
     const [isFocused, setIsFocused] = useState(false);
+    const innerRef = useRef<TextInput>(null);
+    const { mode, colors } = useThemeStore();
+    const isPink = mode === 'pink';
+
+    useImperativeHandle(ref, () => innerRef.current as TextInput);
+
+    const handleContainerPress = () => {
+      innerRef.current?.focus();
+    };
+
+    const getBorderColor = () => {
+      if (error) return '#FF1744';
+      if (isFocused) return isPink ? '#FF007F' : '#FFFFFF';
+      return isPink ? '#261426' : '#272727';
+    };
 
     return (
       <View className={`w-full ${containerClassName}`}>
         {label && (
-          <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+          <Text className="text-xs font-semibold text-muted-foreground mb-1.5 ml-1">
             {label}
           </Text>
         )}
 
-        <View
-          className={`flex-row items-center w-full px-3.5 py-3 rounded-xl bg-card border ${
-            error
-              ? 'border-danger'
-              : isFocused
-              ? 'border-primary ring-1 ring-primary'
-              : 'border-border'
-          }`}
+        <Pressable
+          onPress={handleContainerPress}
+          style={{
+            borderColor: getBorderColor(),
+            borderWidth: 1.5,
+            backgroundColor: '#09090C',
+            shadowColor: isFocused ? (isPink ? '#FF007F' : '#FFFFFF') : 'transparent',
+            shadowOpacity: isFocused ? 0.3 : 0,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 0 },
+          }}
+          className="flex-row items-center w-full px-3.5 py-3 rounded-2xl cursor-text"
         >
           {leftIcon && <View className="mr-2.5 items-center justify-center">{leftIcon}</View>}
 
           <TextInput
-            ref={ref}
-            placeholderTextColor="#64748B"
-            className={`flex-1 text-foreground text-sm font-normal py-0 ${className}`}
+            ref={innerRef}
+            placeholderTextColor="#71717A"
+            style={[
+              Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : undefined,
+              style,
+            ]}
+            className={`flex-1 text-white text-sm font-normal py-1 ${className}`}
             onFocus={(e) => {
               setIsFocused(true);
               onFocus?.(e);
@@ -71,10 +98,10 @@ export const Input = forwardRef<TextInput, InputProps>(
           />
 
           {rightIcon && <View className="ml-2.5 items-center justify-center">{rightIcon}</View>}
-        </View>
+        </Pressable>
 
         {error ? (
-          <Text className="text-xs text-danger mt-1.5 ml-1 font-medium">{error}</Text>
+          <Text className="text-xs text-danger mt-1.5 ml-1 font-semibold">{error}</Text>
         ) : helperText ? (
           <Text className="text-xs text-muted-foreground mt-1.5 ml-1">{helperText}</Text>
         ) : null}
@@ -109,9 +136,9 @@ export const PasswordInput = forwardRef<TextInput, PasswordInputProps>((props, r
           accessibilityRole="button"
         >
           {showPassword ? (
-            <EyeOff size={18} color="#94A3B8" />
+            <EyeOff size={18} color="#A1A1AA" />
           ) : (
-            <Eye size={18} color="#94A3B8" />
+            <Eye size={18} color="#A1A1AA" />
           )}
         </TouchableOpacity>
       }
@@ -140,7 +167,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
         value={value}
         onChangeText={onChangeText}
         placeholder="Buscar..."
-        leftIcon={<Search size={18} color="#64748B" />}
+        leftIcon={<Search size={18} color="#71717A" />}
         rightIcon={
           value && value.length > 0 ? (
             <TouchableOpacity
@@ -149,7 +176,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
               accessibilityLabel="Limpar busca"
               accessibilityRole="button"
             >
-              <X size={16} color="#94A3B8" />
+              <X size={16} color="#A1A1AA" />
             </TouchableOpacity>
           ) : undefined
         }

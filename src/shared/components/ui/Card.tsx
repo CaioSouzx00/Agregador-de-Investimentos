@@ -7,6 +7,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 import { haptic } from '@/shared/utils/haptics';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export interface CardProps extends ViewProps {
   onPress?: TouchableOpacityProps['onPress'];
@@ -20,9 +21,18 @@ export const Card: React.FC<CardProps> = ({
   activeOpacity = 0.85,
   enableHaptic = true,
   className = '',
+  style,
   ...props
 }) => {
-  const baseClasses = `bg-card border border-border rounded-2xl p-4 shadow-sm ${className}`;
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
+
+  const defaultStyle = {
+    backgroundColor: '#09090C',
+    borderColor: isPink ? '#261426' : '#222222',
+    borderWidth: 1,
+    borderRadius: 20,
+  };
 
   if (onPress) {
     return (
@@ -32,7 +42,8 @@ export const Card: React.FC<CardProps> = ({
           if (enableHaptic) haptic.light();
           onPress(e);
         }}
-        className={`${baseClasses} active:bg-card-hover`}
+        style={[defaultStyle, style]}
+        className={`p-4 shadow-sm active:bg-zinc-900 ${className}`}
         {...(props as TouchableOpacityProps)}
       >
         {children}
@@ -41,7 +52,7 @@ export const Card: React.FC<CardProps> = ({
   }
 
   return (
-    <View className={baseClasses} {...props}>
+    <View style={[defaultStyle, style]} className={`p-4 shadow-sm ${className}`} {...props}>
       {children}
     </View>
   );
@@ -68,12 +79,12 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
       ) : (
         <View className="flex-1 pr-2">
           {title && (
-            <Text className="text-base font-bold text-foreground tracking-tight">
+            <Text className="text-base font-extrabold text-white tracking-tight">
               {title}
             </Text>
           )}
           {subtitle && (
-            <Text className="text-xs text-muted-foreground mt-0.5">{subtitle}</Text>
+            <Text className="text-xs text-zinc-400 mt-0.5">{subtitle}</Text>
           )}
         </View>
       )}

@@ -6,6 +6,7 @@ import { Card } from '@/shared/components/ui/Card';
 import { CurrencyText } from '@/shared/components/ui/CurrencyText';
 import { Badge } from '@/shared/components/ui/Badge';
 import { AccountValuationResponse } from '@/shared/types/api';
+import { useThemeStore } from '@/shared/stores/themeStore';
 
 export interface AccountSummaryCardProps {
   account: AccountValuationResponse;
@@ -17,8 +18,9 @@ export const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
   totalNetWorth,
 }) => {
   const router = useRouter();
+  const { mode } = useThemeStore();
+  const isPink = mode === 'pink';
 
-  // Calcula a porcentagem do total do portfólio
   const percentage =
     totalNetWorth > 0
       ? ((account.totalPortfolioValue / totalNetWorth) * 100).toFixed(1)
@@ -29,18 +31,30 @@ export const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
   return (
     <Card
       onPress={() => router.push(`/(app)/accounts/${account.accountId}` as any)}
-      className="p-4 mb-3 bg-card border-border active:bg-card-hover"
+      style={{
+        backgroundColor: '#09090C',
+        borderColor: isPink ? '#261426' : '#222222',
+        borderWidth: 1,
+      }}
+      className="p-4 mb-3"
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 pr-3">
-          <View className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center mr-3">
-            <Landmark size={20} color="#3B82F6" />
+          <View
+            style={{
+              backgroundColor: isPink ? 'rgba(255, 0, 127, 0.15)' : 'rgba(255, 255, 255, 0.12)',
+              borderColor: isPink ? 'rgba(255, 0, 127, 0.35)' : 'rgba(255, 255, 255, 0.25)',
+              borderWidth: 1,
+            }}
+            className="w-11 h-11 rounded-2xl items-center justify-center mr-3.5"
+          >
+            <Landmark size={20} color={isPink ? '#FF007F' : '#FFFFFF'} />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+            <Text className="text-base font-bold text-white" numberOfLines={1}>
               {account.description}
             </Text>
-            <Text className="text-xs text-muted-foreground mt-0.5">
+            <Text className="text-xs text-zinc-400 mt-0.5">
               {positionsCount === 1 ? '1 ativo' : `${positionsCount} ativos`}
             </Text>
           </View>
@@ -50,14 +64,14 @@ export const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
           <View className="items-end">
             <CurrencyText value={account.totalPortfolioValue} size="md" />
             <Badge
-              label={`${percentage}% do total`}
+              label={`${percentage}% da carteira`}
               variant="muted"
               size="sm"
               className="mt-1"
             />
           </View>
           <View className="justify-center items-center pl-1">
-            <ChevronRight size={18} color="#64748B" />
+            <ChevronRight size={18} color={isPink ? '#FF007F' : '#A1A1AA'} />
           </View>
         </View>
       </View>

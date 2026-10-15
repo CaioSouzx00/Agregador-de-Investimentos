@@ -9,3 +9,4 @@ export * from './PercentageText';
 export * from './Divider';
 export * from './Avatar';
 export * from './BottomSheet';
+export * from './ThemeToggle';
