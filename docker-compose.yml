@@ -6,3 +6,8 @@ services:
       MYSQL_DATABASE: agregadordeinvestimentos
     ports:
       - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
